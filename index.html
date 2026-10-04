@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>WELTALL — 3D Weltraum Tycoon Empire im Minecraft-Style</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🧊</text></svg>" />
+<link rel="stylesheet" href="style.css" />
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+    "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+  }
+}
+</script>
+</head>
+<body>
+<div id="app">
+  <canvas id="scene"></canvas>
+
+  <!-- TOP HUD -->
+  <header id="topbar">
+    <div class="logo">
+      <div class="logo-cube"><span></span></div>
+      <div>
+        <div class="logo-title">WELTALL</div>
+        <div class="logo-sub">⛏ SPACE TYCOON EMPIRE</div>
+      </div>
+    </div>
+    <div id="resources"></div>
+    <div class="top-actions">
+      <button id="btn-speed" title="Spielgeschwindigkeit">▶ 1x</button>
+      <button id="btn-rotate" title="Auto-Rotation">🔄</button>
+      <button id="btn-sound" title="Sound">🔊</button>
+      <button id="btn-help" title="Hilfe">?</button>
+      <button id="btn-reset" title="Neustart">🗑</button>
+    </div>
+  </header>
+
+  <!-- LEVEL BAR -->
+  <div id="levelbar">
+    <div class="lvl-badge"><span id="lvl-num">1</span><small>LVL</small></div>
+    <div class="lvl-track"><div id="lvl-fill"></div><span id="lvl-text">0 / 100 XP</span></div>
+    <div id="stat-pop">👥 0/0</div>
+    <div id="stat-income">+0 ⏣/s</div>
+  </div>
+
+  <!-- BUILD MENU -->
+  <aside id="buildmenu">
+    <h2>🛠 BAUEN</h2>
+    <p class="hint">Kachel anklicken → bauen.<br>Gebäude anklicken → Upgrade.</p>
+    <div id="build-list"></div>
+    <div class="menu-foot">
+      <div id="quest-box">
+        <h3>🎯 MISSIONEN</h3>
+        <div id="quests"></div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- SELECTION PANEL -->
+  <div id="infopanel" class="hidden">
+    <button id="info-close">✕</button>
+    <h3 id="info-title">—</h3>
+    <p id="info-desc">—</p>
+    <div id="info-stats"></div>
+    <div class="info-row">
+      <button id="btn-upgrade">⬆ Upgrade</button>
+      <button id="btn-sell">💰 Abreißen</button>
+      <button id="btn-action" class="hidden">🚀 Aktion</button>
+    </div>
+  </div>
+
+  <!-- TOASTS -->
+  <div id="toasts"></div>
+
+  <!-- TUTORIAL -->
+  <div id="tutorial">
+    <div class="tut-card">
+      <div class="tut-pixel">🧊⛏️🚀</div>
+      <h1>WILLKOMMEN, COMMANDER!</h1>
+      <p>Baue dein <b>Voxel-Weltraum-Imperium</b> auf einer schwebenden Plattform:</p>
+      <ol>
+        <li>🖱️ <b>Ziehen</b> = Drehen &nbsp; • &nbsp; <b>Scrollen</b> = Zoomen &nbsp; • &nbsp; <b>Rechts-Ziehen</b> = Schwenken</li>
+        <li>🧱 Klicke eine <b>freie mint-grüne Kachel</b> und wähle ein Gebäude.</li>
+        <li>☀️ Starte mit <b>Solarpanel + Erz-Mine</b> — Energie ist alles!</li>
+        <li>🚀 Starte Expeditionen mit der <b>Raketenrampe</b> für fette Beute.</li>
+      </ol>
+      <button id="btn-start">🚀 IMPERIUM STARTEN</button>
+      <label class="tut-check"><input type="checkbox" id="chk-tut" /> Nicht mehr zeigen</label>
+    </div>
+  </div>
+
+  <div id="loading"><div class="load-cube"></div><p>GENERIERTE GALAXIE …</p></div>
+  <div id="vignette"></div>
+</div>
+<script type="module" src="game.js"></script>
+</body>
+</html>
