@@ -5,17 +5,29 @@ import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 const GRID = 12, TILE = 2;
 const SAVE_KEY = 'weltall-tycoon-v1';
 
+/* Android / Mobile-Erkennung */
+const IS_COARSE = matchMedia('(pointer:coarse)').matches;
+const IS_SMALL = Math.min(innerWidth, innerHeight) < 500;
+const IS_MOBILE = IS_COARSE || IS_SMALL || /Android|iPhone|iPad|Mobile/i.test(navigator.userAgent);
+if (IS_MOBILE) document.body.classList.add('is-mobile');
+
 const BUILDINGS = {
   hq:      { name:'👑 Kommandozentrale', icon:'👑', desc:'Herz deines Imperiums. +Steuern & schaltet alles frei.', base:{credits:0}, prod:{credits:2}, energy:0, pop:0, color:0xffd23e },
   solar:   { name:'☀️ Solarpanel', icon:'☀️', desc:'+6 Energie. Basis jeder Expansion. Braucht keine Energie.', base:{credits:50}, prod:{energy:6}, energy:0, pop:0, color:0x4cc9ff },
   mine:    { name:'⛏️ Erz-Mine', icon:'⛏️', desc:'Bohrt Voxel-Erz. +3 Erz /s. Verbraucht 2⚡.', base:{credits:120}, prod:{erz:3}, energy:-2, pop:0, color:0xd97b3f },
   crystal: { name:'💎 Kristall-Bohrer', icon:'💎', desc:'Seltene Kristalle. +1 Kristall /s. Verbraucht 4⚡.', base:{credits:400,erz:20}, prod:{kristall:1}, energy:-4, pop:0, color:0xb388ff },
-  habitat: { name:'🏠 Wohnmodul', icon:'🏠', desc:'+8 Einwohner. Einwohner zahlen Steuern (⏣). Verbraucht 1⚡.', base:{credits:150,erz:10}, prod:{}, energy:-1, pop:8, color:0x4ade80 },
+  habitat: { name:'🏢 Großes Wohnmodul', icon:'🏢', desc:'Drei Stockwerke für deine Crew: +20👥, sie zahlen Steuern (⏣). Verbraucht 2⚡.', base:{credits:400,erz:60}, prod:{}, energy:-2, pop:20, color:0x4ade80 },
   labor:   { name:'🔬 Labor', icon:'🔬', desc:'+1 Forschung /s. Schaltet Upgrades frei. Verbraucht 3⚡.', base:{credits:350,erz:30}, prod:{forschung:1}, energy:-3, pop:0, color:0x7ef9ff },
   trade:   { name:'💰 Handelsstation', icon:'💰', desc:'Verkauft auto: 1 Erz→4⏣, 1 Kristall→18⏣. Verbraucht 2⚡.', base:{credits:500,erz:40}, prod:{credits:4}, energy:-2, pop:0, autoTrade:true, color:0xffd23e },
   rocket:  { name:'🚀 Raketenrampe', icon:'🚀', desc:'Klick → Expedition starten (20s): Beute bis 800⏣ + XP. Verbraucht 5⚡.', base:{credits:800,erz:80,kristall:5}, prod:{}, energy:-5, pop:0, action:true, color:0xff5d5d },
   shield:  { name:'🛡️ Schildgenerator', icon:'🛡️', desc:'+50% Produktion im Umkreis + schicker Schirm. Verbraucht 3⚡.', base:{credits:600,kristall:8}, prod:{}, energy:-3, pop:0, boost:true, color:0x4cc9ff },
-  farm:    { name:'🌱 Bio-Kuppel', icon:'🌱', desc:'+4 Einwohner, +1⏣/s Steuern, hübsch. Verbraucht 1⚡.', base:{credits:250,erz:15}, prod:{credits:1}, energy:-1, pop:4, color:0x7bff9e },
+  farm:    { name:'🌱 Pflanzen-Habitat', icon:'🌱', desc:'Das einzige Grün im All: +4👥, +1⏣/s. Pflanzen nur unter Glas! Verbraucht 1⚡.', base:{credits:250,erz:15}, prod:{credits:1}, energy:-1, pop:4, color:0x7bff9e },
+  station: { name:'🛰 Stations-Kern', icon:'🛰', desc:'Herzstück einer Raumstation: +12👥, +2⏣/s. Verbraucht 4⚡.', base:{credits:900,erz:120}, prod:{credits:2}, energy:-4, pop:12, color:0xdfe6ff },
+  dock:    { name:'🛬 Andockbucht', icon:'🛬', desc:'+6⏣/s Hafengebühren. Jede Bucht verkürzt Expeditionen um 5s. Verbraucht 3⚡.', base:{credits:700,erz:60}, prod:{credits:6}, energy:-3, pop:0, color:0xffd23e },
+  sail:    { name:'⛵ Solarsegel', icon:'⛵', desc:'Riesiges Segel: +12⚡ Energie. Verbraucht nichts.', base:{credits:600,erz:40,kristall:5}, prod:{energy:12}, energy:0, pop:0, color:0xcfe6ff },
+  antenna: { name:'📡 Kommunikations-Array', icon:'📡', desc:'Deep-Space-Funk: +2🔬/s. Verbraucht 3⚡.', base:{credits:650,erz:50}, prod:{forschung:2}, energy:-3, pop:0, color:0x7ef9ff },
+  tank:    { name:'🛢 Treibstoffdepot', icon:'🛢', desc:'+25% Expeditions-Beute pro Depot. Verbraucht 2⚡.', base:{credits:550,erz:70}, prod:{}, energy:-2, pop:0, color:0xff8c42 },
+  hangar:  { name:'🛸 Hangar', icon:'🛸', desc:'Schiffswerft: +5⏣/s, +4👥. Verbraucht 4⚡.', base:{credits:750,erz:90,kristall:5}, prod:{credits:5}, energy:-4, pop:4, color:0xb388ff },
 };
 
 const QUESTS = [
@@ -26,6 +38,8 @@ const QUESTS = [
   { id:'q5', text:'Besitze 1000 Credits', check:s=>s.credits>=1000, prog:s=>Math.floor(Math.min(s.credits,1000))+'/1000', reward:{kristall:5} },
   { id:'q6', text:'Baue Handelsstation + Raketenrampe', check:s=>count('trade')>=1&&count('rocket')>=1, prog:s=>(count('trade')+count('rocket'))+'/2', reward:{credits:1200} },
   { id:'q7', text:'Erreiche Level 5', check:s=>s.level>=5, prog:s=>s.level+'/5', reward:{credits:2000,kristall:10} },
+  { id:'q8', text:'Baue einen Raumstations-Kern', check:s=>count('station')>=1, prog:s=>count('station')+'/1', reward:{credits:800,forschung:10} },
+  { id:'q9', text:'Baue Solarsegel + Hangar', check:s=>count('sail')>=1&&count('hangar')>=1, prog:s=>(count('sail')+count('hangar'))+'/2', reward:{credits:1500,erz:60} },
 ];
 
 /* ============ STATE ============ */
@@ -46,31 +60,38 @@ const sfx={ build:()=>{beep(300,.1);setTimeout(()=>beep(500,.12),90)}, coin:()=>
 
 /* ============ THREE SETUP ============ */
 const canvas=document.getElementById('scene');
-const renderer=new THREE.WebGLRenderer({canvas,antialias:true});
-renderer.setPixelRatio(Math.min(devicePixelRatio,2));
+const renderer=new THREE.WebGLRenderer({canvas,antialias:!IS_MOBILE,powerPreference:IS_MOBILE?'low-power':'high-performance'});
+renderer.setPixelRatio(IS_MOBILE?Math.min(devicePixelRatio,1.5):Math.min(devicePixelRatio,2));
 renderer.setSize(innerWidth,innerHeight);
-renderer.shadowMap.enabled=true; renderer.shadowMap.type=THREE.PCFShadowMap;
+renderer.shadowMap.enabled=!IS_MOBILE; renderer.shadowMap.type=THREE.PCFShadowMap;
 const scene=new THREE.Scene();
 scene.background=new THREE.Color(0x04060f);
 scene.fog=new THREE.Fog(0x04060f,90,220);
 const camera=new THREE.PerspectiveCamera(50,innerWidth/innerHeight,.1,600);
-camera.position.set(17,15,17);
+camera.position.set(...(IS_MOBILE?[21,19,21]:[17,15,17]));
 const controls=new OrbitControls(camera,renderer.domElement);
 controls.target.set(0,1,0);
-controls.enableDamping=true; controls.maxPolarAngle=Math.PI/2.05; controls.minDistance=8; controls.maxDistance=90;
+controls.enableDamping=true; controls.maxPolarAngle=Math.PI/2.05; controls.minDistance=8; controls.maxDistance=IS_MOBILE?110:90;
 controls.autoRotate=false; controls.autoRotateSpeed=.8;
+if(IS_MOBILE && controls.touches){
+  controls.touches.ONE=THREE.TOUCH.ROTATE;
+  controls.touches.TWO=THREE.TOUCH.DOLLY_PAN;
+  controls.rotateSpeed=.7; controls.zoomSpeed=1.2;
+}
+canvas.addEventListener('contextmenu',e=>e.preventDefault());
+canvas.style.touchAction='none';
 
 scene.add(new THREE.AmbientLight(0xaabbff,.95));
 const hemi=new THREE.HemisphereLight(0x4cc9ff,0x2a1f3a,.9); scene.add(hemi);
 const sun=new THREE.DirectionalLight(0xfff2cc,2.2);
-sun.position.set(30,40,10); sun.castShadow=true;
-sun.shadow.mapSize.set(2048,2048); sun.shadow.camera.left=-30;sun.shadow.camera.right=30;sun.shadow.camera.top=30;sun.shadow.camera.bottom=-30;
+sun.position.set(30,40,10); sun.castShadow=!IS_MOBILE;
+sun.shadow.mapSize.set(...(IS_MOBILE?[1024,1024]:[2048,2048])); sun.shadow.camera.left=-30;sun.shadow.camera.right=30;sun.shadow.camera.top=30;sun.shadow.camera.bottom=-30;
 scene.add(sun);
 const rim=new THREE.PointLight(0xb388ff,60,120); rim.position.set(-25,10,-25); scene.add(rim);
 
 /* Stars */
 function makeStars(){
-  const g=new THREE.BufferGeometry(), N=2500, pos=new Float32Array(N*3), col=new Float32Array(N*3);
+  const g=new THREE.BufferGeometry(), N=IS_MOBILE?900:2500, pos=new Float32Array(N*3), col=new Float32Array(N*3);
   const c=new THREE.Color();
   for(let i=0;i<N;i++){ const r=180+Math.random()*180, th=Math.random()*Math.PI*2, ph=Math.acos(2*Math.random()-1);
     pos[i*3]=r*Math.sin(ph)*Math.cos(th); pos[i*3+1]=Math.abs(r*Math.cos(ph))-20; pos[i*3+2]=r*Math.sin(ph)*Math.sin(th);
@@ -124,8 +145,8 @@ function pixTex(base,fn){
   const t=new THREE.CanvasTexture(cv);t.magFilter=THREE.NearestFilter;t.minFilter=THREE.NearestFilter;t.colorSpace=THREE.SRGBColorSpace;return t;
 }
 const TEX={
-  top: pixTex('#5d8a6b',(x,s)=>{x.fillStyle='#5df2b8aa';for(let i=0;i<30;i++)x.fillRect(Math.random()*s|0,Math.random()*s|0,2,1);x.fillStyle='#2a4a38';for(let i=0;i<12;i++)x.fillRect(Math.random()*s|0,Math.random()*s|0,1,1);}),
-  side: pixTex('#3d4468',(x,s)=>{x.fillStyle='#4cc9ff55';x.fillRect(0,2,s,2);x.fillStyle='#00000055';for(let i=0;i<s;i+=4)x.fillRect(i,6,1,s);}),
+  top: pixTex('#6e6a66',(x,s)=>{x.fillStyle='#54504c';for(let i=0;i<26;i++)x.fillRect(Math.random()*s|0,Math.random()*s|0,2,1);x.fillStyle='#8f8a84';for(let i=0;i<12;i++)x.fillRect(Math.random()*s|0,Math.random()*s|0,1,1);x.fillStyle='#3f3b38';x.fillRect(2,3,4,3);x.fillRect(10,9,3,3);x.fillStyle='#2c2927';x.fillRect(3,4,2,1);}),
+  side: pixTex('#3a3735',(x,s)=>{x.fillStyle='#57514d';x.fillRect(0,3,s,2);x.fillStyle='#211f1e';for(let i=0;i<s;i+=3)x.fillRect(i,8+(i%2),1,3);x.fillStyle='#6e6a66';for(let i=0;i<8;i++)x.fillRect(Math.random()*s|0,Math.random()*s|0,1,1);}),
   bottom: pixTex('#141726'),
   metal: pixTex('#8a93b2'),
   dark: pixTex('#232842'),
@@ -134,6 +155,7 @@ const TEX={
   rust: pixTex('#a3552e'),
   crystal: pixTex('#b388ff',(x,s)=>{x.fillStyle='#fff';for(let i=0;i<14;i++)x.fillRect(Math.random()*s|0,Math.random()*s|0,1,1);}),
   leaf: pixTex('#2f9e5f'),
+  sail: pixTex('#dfe9ff',(x,s)=>{x.fillStyle='#4cc9ff';for(let i=0;i<s;i+=4){x.fillRect(i,0,1,s);}x.fillStyle='#ffffff';for(let i=0;i<8;i++)x.fillRect(Math.random()*s|0,Math.random()*s|0,2,1);}),
   white: pixTex('#dfe6ff'),
 };
 
@@ -157,9 +179,9 @@ function buildPlatform(){
     const t=new THREE.Mesh(new THREE.BoxGeometry(TILE,1,TILE),mats);
     t.position.set(x,-.5,z); t.receiveShadow=true; t.userData={ix,iz};
     baseGroup.add(t); tileMeshes[tileKey(ix,iz)]=t;
-    // under-rock (random voxel stalactite)
-    if(Math.random()<.8){
-      const h=1+Math.random()*3|0;
+    // under-rock (random voxel stalactite) — fewer on mobile for perf
+    if(Math.random()<(IS_MOBILE?.45:.8)){
+      const h=1+(Math.random()*(IS_MOBILE?2:3)|0);
       for(let k=0;k<h;k++){
         const r=new THREE.Mesh(new THREE.BoxGeometry(TILE*(.7-k*.12),1,TILE*(.7-k*.12)),
           new THREE.MeshLambertMaterial({color:Math.random()<.2?0x4cc9ff:0x232842}));
@@ -233,12 +255,36 @@ function makeBuilding(type){
     g.add(box(1.8,.25,1.8,ME(0xb388ff,0x6a3df5,.5),0,.5,0,false));
   }
   else if(type==='habitat'){
-    g.add(box(2.2,.4,2.2,MT(TEX.dark),0,.2,0));
-    g.add(box(1.9,1.2,1.4,MT(TEX.white),0,1,0));
-    g.add(box(2,.3,1.5,M(0x4ade80),0,1.75,0));
-    for(let i=-1;i<=1;i++) g.add(box(.4,.5,.1,ME(0xffe9a3,0xffd23e,.7),i*.6,1,.72,false));
-    g.add(box(.5,.9,.2,M(0x232842),0,.65,.72));
-    g.add(box(.3,.5,.3,ME(0x5df2b8,0x5df2b8),.8,2.1,0,false));
+    g.add(box(2.6,.4,2.6,MT(TEX.dark),0,.2,0));
+    // main tower: 3 floors
+    const wallM=MT(TEX.white), floorM=M(0x2b3f8f);
+    for(let f=0;f<3;f++){
+      const y=1.1+f*1.15;
+      g.add(box(2.1,1.05,1.9,wallM,0,y,0));
+      g.add(box(2.2,.14,2,floorM,0,y+.6,0));
+      for(let i=-1;i<=1;i++){
+        g.add(box(.42,.5,.08,ME(0xffe9a3,0xffd23e,.75),i*.62,y,.98,false));
+        g.add(box(.08,.5,.42,ME(0xbfe9ff,0x4cc9ff,.6),1.08,y,i*.55,false));
+      }
+    }
+    // side wing
+    g.add(box(1.1,1.7,1.4,MT(TEX.metal),1.45,1.25,0));
+    for(let f=0;f<2;f++) g.add(box(.5,.45,.08,ME(0xffe9a3,0xffd23e,.7),1.45,1+f*.85,.72,false));
+    // entrance canopy + door + lamps
+    g.add(box(1,.18,.7,M(0xff8c42),-.4,.95,1.15));
+    g.add(box(.55,.85,.15,M(0x232842),-.4,.62,1));
+    g.add(box(.16,.3,.16,ME(0x5df2b8,0x5df2b8,.9),-.95,.8,1.15,false));
+    g.add(box(.16,.3,.16,ME(0x5df2b8,0x5df2b8,.9),.15,.8,1.15,false));
+    // roof deck: railing + antenna + beacon + vent
+    g.add(box(2.2,.16,2,M(0x8a93b2),0,4.15,0));
+    g.add(box(2.2,.3,.12,M(0x8a93b2),0,4.4,1));
+    g.add(box(2.2,.3,.12,M(0x8a93b2),0,4.4,-1));
+    g.add(box(.12,.3,2,M(0x8a93b2),1,4.4,0));
+    g.add(box(.12,.3,2,M(0x8a93b2),-1,4.4,0));
+    g.add(box(.22,1.3,.22,M(0x8a93b2),-.6,4.9,-.5));
+    const habBeacon=box(.34,.34,.34,ME(0xff5d5d,0xff5d5d,1),-.6,5.7,-.5,false); habBeacon.name='beacon'; g.add(habBeacon);
+    g.add(box(.7,.5,.9,MT(TEX.metal),.5,4.5,-.3));
+    g.add(box(.5,.4,.5,ME(0x4cc9ff,0x4cc9ff,.7),.5,4.95,-.3,false));
   }
   else if(type==='labor'){
     g.add(box(2,.4,2,MT(TEX.dark),0,.2,0));
@@ -282,6 +328,73 @@ function makeBuilding(type){
     for(let i=0;i<5;i++) g.add(box(.25,.5,.25,ME(0x4ade80,0x1d7a44,.5),-.7+Math.random()*1.4,.6,-.5+Math.random(),false));
     g.add(box(.3,.4,.3,M(0x8a5a2b),.3,.5,.3));
   }
+  else if(type==='station'){
+    g.add(box(2.4,.4,2.4,MT(TEX.dark),0,.2,0));
+    g.add(box(1.6,2.2,1.6,MT(TEX.white),0,1.5,0));
+    g.add(box(1.7,.3,1.7,M(0xff8c42),0,2.7,0));
+    g.add(box(.9,.9,.9,ME(0x4cc9ff,0x4cc9ff,.8),0,3.3,0,false));
+    g.add(box(.25,1.4,.25,M(0x8a93b2),0,4.2,0));
+    const beacon=box(.4,.4,.4,ME(0xff5d5d,0xff5d5d,1),0,5,0,false); beacon.name='beacon'; g.add(beacon);
+    const ring=new THREE.Group(); ring.name='ring';
+    for(let i=0;i<8;i++){ const a=i/8*Math.PI*2;
+      ring.add(box(.7,.3,.7,i%2?M(0x8a93b2):MT(TEX.white),Math.cos(a)*1.9,0,Math.sin(a)*1.9)); }
+    ring.position.y=1.5; g.add(ring);
+    [[-1.1,-1.1],[1.1,-1.1],[-1.1,1.1],[1.1,1.1]].forEach(([a,b])=>g.add(box(.2,.9,.2,ME(0x5df2b8,0x5df2b8,.8),a,.85,b,false)));
+  }
+  else if(type==='dock'){
+    g.add(box(2.6,.35,2.6,MT(TEX.dark),0,.17,0));
+    g.add(box(2,.25,2,M(0x2b2f45),0,.45,0));
+    g.add(box(.9,.08,.9,ME(0xffd23e,0xffd23e,.9),0,.6,0,false));
+    for(let i=-1;i<=1;i++) g.add(box(.18,.06,.5,ME(0x5df2b8,0x5df2b8,.7),i*.5,.6,0,false));
+    [[-1,-1],[1,-1],[-1,1],[1,1]].forEach(([a,b])=>g.add(box(.22,1.3,.22,M(0x8a93b2),a*1.05,1.1,b*1.05)));
+    g.add(box(.7,1.5,.7,MT(TEX.white),-1.05,1.4,-1.05));
+    g.add(box(.72,.3,.72,ME(0x4cc9ff,0x4cc9ff,.8),-1.05,1.9,-1.05,false));
+    g.add(box(.7,.35,1.2,MT(TEX.metal),.5,.85,.2));
+    g.add(box(.4,.25,.5,ME(0x4cc9ff,0x4cc9ff,.8),.5,.9,.75,false));
+  }
+  else if(type==='sail'){
+    g.add(box(1.4,.35,1.4,MT(TEX.dark),0,.17,0));
+    g.add(box(.28,3.4,.28,M(0x8a93b2),0,2,0));
+    const sail=new THREE.Group(); sail.name='sail';
+    sail.add(box(3.4,.08,2.2,MT(TEX.sail),0,0,0));
+    sail.add(box(3.5,.05,.18,M(0x232842),0,0,1.15));
+    sail.add(box(3.5,.05,.18,M(0x232842),0,0,-1.15));
+    sail.position.y=3.4; sail.rotation.x=-.35; g.add(sail);
+    g.add(box(.4,.5,.4,ME(0xffd23e,0xffd23e,.8),0,.6,0,false));
+  }
+  else if(type==='antenna'){
+    g.add(box(1.8,.4,1.8,MT(TEX.dark),0,.2,0));
+    g.add(box(.9,.9,.9,MT(TEX.metal),0,.85,0));
+    g.add(box(.22,2.6,.22,M(0x8a93b2),0,2.4,0));
+    const dish=new THREE.Group(); dish.name='dish';
+    const plate=box(1.3,.12,1.3,MT(TEX.white),0,0,0); plate.rotation.x=.6; dish.add(plate);
+    dish.add(box(.14,.14,.9,ME(0xff5d5d,0xff5d5d,.9),0,.3,-.2,false));
+    dish.position.y=3.9; g.add(dish);
+    g.add(box(.3,.3,.3,ME(0x5df2b8,0x5df2b8,.9),.5,.6,.5,false));
+  }
+  else if(type==='tank'){
+    g.add(box(2.4,.35,2.4,MT(TEX.dark),0,.17,0));
+    const tankM=MT(TEX.white), bandM=M(0xff8c42);
+    [-.55,.55].forEach(z=>{
+      const t=new THREE.Mesh(new THREE.CylinderGeometry(.5,.5,1.7,10),tankM);
+      t.rotation.z=Math.PI/2; t.position.set(0,.95,z); t.castShadow=true; t.receiveShadow=true; g.add(t);
+      [.4,-.4].forEach(x=>{ const band=new THREE.Mesh(new THREE.BoxGeometry(.16,1.04,1.04),bandM); band.position.set(x,.95,z); g.add(band); });
+    });
+    g.add(box(.3,1.3,.3,M(0x8a93b2),-1,1,0));
+    g.add(box(.34,.2,.34,ME(0xffd23e,0xffd23e,.8),-1,1.7,0,false));
+    for(let i=0;i<4;i++) g.add(box(.3,.06,.3,i%2?M(0xffd23e):M(0x141726),.9,.4,-.7+i*.45,false));
+  }
+  else if(type==='hangar'){
+    g.add(box(2.6,.35,2.6,MT(TEX.dark),0,.17,0));
+    g.add(box(.3,1.5,2.2,MT(TEX.metal),-1.05,1.1,0));
+    g.add(box(.3,1.5,2.2,MT(TEX.metal),1.05,1.1,0));
+    g.add(box(2.4,.35,2.2,MT(TEX.dark),0,2,0));
+    g.add(box(2.42,.16,.3,ME(0xff5d5d,0xff5d5d,.8),0,1.9,1.05,false));
+    g.add(box(1.7,.12,1.9,ME(0xffd23e,0x7a5a00,.5),0,.42,0,false));
+    g.add(box(.6,.4,1.3,ME(0xb388ff,0x6a3df5,.6),0,1,0,false));
+    g.add(box(.9,.15,.5,M(0x232842),0,1.15,-.4,false));
+    g.add(box(.25,.5,.25,ME(0x5df2b8,0x5df2b8),0,2.35,0,false));
+  }
   g.traverse(o=>{if(o.isMesh){o.castShadow=true;}});
   return g;
 }
@@ -314,8 +427,11 @@ let astroT=0, roverT=0;
 
 /* particles */
 const particles=[];
+const MAX_PARTICLES=IS_MOBILE?120:400;
 function burst(pos,color,n=14,spread=2.4,up=4){
+  if(IS_MOBILE) n=Math.ceil(n/2);
   for(let i=0;i<n;i++){
+    if(particles.length>=MAX_PARTICLES) break;
     const m=new THREE.Mesh(new THREE.BoxGeometry(.16,.16,.16),new THREE.MeshBasicMaterial({color}));
     m.position.copy(pos);
     m.userData.v=new THREE.Vector3((Math.random()-.5)*spread,Math.random()*up,(Math.random()-.5)*spread);
@@ -459,28 +575,33 @@ function renderBuildMenu(){
     btn.innerHTML=`<div class="ico">${b.icon}</div>
       <div><b>${b.name}</b><small>${b.desc}</small><div class="cost">${costText(cc)}</div></div>
       <div class="build-btn">${owned>0?'x'+owned:'BAU'}</div>`;
-    btn.onclick=()=>{ S.buildMode=S.buildMode===key?null:key; S.sel=null; hideInfo(); renderBuildMenu(); if(S.buildMode)toast(`${b.icon} Platziere: ${b.name} — klicke eine freie Kachel`); beep(700,.05); };
+    btn.onclick=()=>{ S.buildMode=S.buildMode===key?null:key; S.sel=null; hideInfo(); renderBuildMenu(); if(S.buildMode){toast(`${b.icon} Platziere: ${b.name} — tippe eine freie Kachel`); if(isSheetMode())closeSheet();} beep(700,.05); };
     el.appendChild(btn);
   });
 }
 
 function renderQuests(){
+  const open=QUESTS.filter(q=>!S.questsDone.includes(q.id)).length;
+  const qc=$('quest-count'); if(qc) qc.textContent=open>0?open+' offen':'fertig ✅';
   $('quests').innerHTML=QUESTS.map(q=>{
     const done=S.questsDone.includes(q.id);
     return `<div class="quest ${done?'done':''}">${done?'✅':'🎯'} ${q.text}<br><small style="color:var(--dim)">${done?'Belohnung abgeholt':q.prog(S)+' • +'+costText(q.reward)}</small>${done?'':'<div class="q-bar"><i style="width:40%"></i></div>'}</div>`;
   }).join('');
 }
 
-/* selection */
+/* selection — tap-safe: distinguishes drag/pinch vs. tap */
 const ray=new THREE.Raycaster(), mouse=new THREE.Vector2();
-let downPos=null;
-renderer.domElement.addEventListener('pointerdown',e=>{downPos=[e.clientX,e.clientY]});
+let downPos=null, downTime=0;
+const TAP_DIST=IS_MOBILE?14:6, TAP_MS=600;
+renderer.domElement.addEventListener('pointerdown',e=>{downPos=[e.clientX,e.clientY];downTime=performance.now();},{passive:true});
 renderer.domElement.addEventListener('pointerup',e=>{
   if(!downPos) return;
   const dx=e.clientX-downPos[0],dy=e.clientY-downPos[1];
-  if(Math.hypot(dx,dy)>6) return; // was drag
+  const dtMs=performance.now()-downTime; downPos=null;
+  if(Math.hypot(dx,dy)>TAP_DIST||dtMs>TAP_MS) return; // was drag / pinch / long-press
   handleClick(e);
 });
+renderer.domElement.addEventListener('pointercancel',()=>{downPos=null;},{passive:true});
 function handleClick(e){
   mouse.x=(e.clientX/innerWidth)*2-1; mouse.y=-(e.clientY/innerHeight)*2+1;
   ray.setFromCamera(mouse,camera);
@@ -524,6 +645,7 @@ function tryBuild(ix,iz,type){
 function selectCell(key){
   const c=grid[key]; if(!c)return;
   S.sel=key; S.buildMode=null; renderBuildMenu();
+  if(isSheetMode())closeSheet();
   const b=BUILDINGS[c.type];
   $('infopanel').classList.remove('hidden');
   $('info-title').textContent=`${b.icon} ${b.name} • STUFE ${c.level}`;
@@ -562,16 +684,16 @@ $('btn-sell').onclick=()=>{
 };
 $('btn-action').onclick=()=>{
   const c=grid[S.sel]; if(!c||c.cool>0)return;
-  c.cool=20; sfx.launch();
+  c.cool=Math.max(8,20-5*count('dock')); sfx.launch();
   const rk=c.mesh.getObjectByName('rocket'); const flame=c.mesh.getObjectByName('flame');
   if(flame)flame.visible=true;
-  toast('🚀 Expedition gestartet! Rückkehr in 20s …','gold');
+  toast(`🚀 Expedition gestartet! Rückkehr in ${c.cool}s …`,'gold');
   const startY=c.mesh.position.y;
   c.exped={t:0};
   const iv=setInterval(()=>{
     c.cool-=1;
     if(c.cool<=0){ clearInterval(iv);
-      const loot=300+Math.random()*500+S.level*60;
+      const loot=(300+Math.random()*500+S.level*60)*(1+.25*count('tank'));
       const kr=Math.floor(Math.random()*4+S.level/2);
       S.credits+=loot; S.kristall+=kr; addXP(120);
       toast(`🛬 Expedition zurück! +${Math.floor(loot)}⏣ +${kr}💎`,'gold'); sfx.quest();
@@ -592,7 +714,8 @@ $('btn-help').onclick=()=>$('tutorial').classList.remove('hidden');
 $('btn-reset').onclick=()=>{if(confirm('Wirklich alles abreißen und neu starten?')){localStorage.removeItem(SAVE_KEY);localStorage.removeItem(SAVE_KEY+'-grid');location.reload();}};
 $('btn-start').onclick=()=>{ $('tutorial').classList.add('hidden'); if($('chk-tut').checked)localStorage.setItem(SAVE_KEY+'-hide-tut','1'); sfx.quest(); };
 
-/* hover */
+/* hover — only on fine pointers (desktop), mobile uses tap highlight */
+if(!IS_COARSE){
 renderer.domElement.addEventListener('pointermove',e=>{
   mouse.x=(e.clientX/innerWidth)*2-1; mouse.y=-(e.clientY/innerHeight)*2+1;
   ray.setFromCamera(mouse,camera);
@@ -605,6 +728,30 @@ renderer.domElement.addEventListener('pointermove',e=>{
     hoverBox.material.color.set(occ?0xff5d5d:(S.buildMode?0xffd23e:0x5df2b8));
   } else hoverBox.visible=false;
 });
+}
+
+/* ============ MOBILE SHEET / TABS / FABs ============ */
+const sheet=$('buildmenu');
+if(sheet && !sheet.dataset.tab) sheet.dataset.tab='build';
+const isSheetMode=()=>matchMedia('(max-width:820px),(pointer:coarse)').matches;
+function openSheet(tab='build'){ if(!sheet)return; sheet.dataset.tab=tab; sheet.classList.add('open');
+  $('tab-build')?.classList.toggle('on',tab==='build'); $('tab-quest')?.classList.toggle('on',tab==='quest');
+  const h=sheet.querySelector('.sheet-head h2'); if(h) h.textContent=tab==='quest'?'🎯 MISSIONEN':'🛠 BAUEN'; }
+function closeSheet(){ sheet?.classList.remove('open'); }
+function toggleSheet(tab='build'){ if(!sheet)return; (sheet.classList.contains('open')&&sheet.dataset.tab===tab)?closeSheet():openSheet(tab); }
+$('fab-build') && ($('fab-build').onclick=()=>{toggleSheet('build');beep(700,.05);});
+$('fab-quest') && ($('fab-quest').onclick=()=>{toggleSheet('quest');beep(700,.05);});
+$('sheet-close') && ($('sheet-close').onclick=()=>closeSheet());
+$('tab-build') && ($('tab-build').onclick=()=>openSheet('build'));
+$('tab-quest') && ($('tab-quest').onclick=()=>openSheet('quest'));
+$('sheet-handle') && ($('sheet-handle').onclick=()=>closeSheet());
+// swipe-down on sheet head closes it
+(()=>{ let y0=null; sheet?.addEventListener('touchstart',e=>{y0=e.touches[0].clientY;},{passive:true});
+  sheet?.addEventListener('touchend',e=>{ if(y0==null)return; const dy=(e.changedTouches[0].clientY-y0); if(dy>70)closeSheet(); y0=null; },{passive:true}); })();
+if(IS_MOBILE){
+  const tc=$('tut-controls'); if(tc) tc.innerHTML='👆 <b>1 Finger ziehen</b> = Drehen &nbsp; • &nbsp; <b>2 Finger</b> = Zoomen &nbsp; • &nbsp; <b>Antippen</b> = Bauen';
+  const bh=$('build-hint'); if(bh) bh.innerHTML='Kachel antippen → bauen.<br>Gebäude antippen → Upgrade.';
+}
 
 /* ============ INIT WORLD ============ */
 function initWorld(){
@@ -642,6 +789,10 @@ function animate(){
     const drill=c.mesh.getObjectByName('drill'); if(drill){drill.rotation.y+=dt*6;drill.position.y=2+Math.sin(a*6)*.15;}
     const crys=c.mesh.getObjectByName('crys'); if(crys){crys.rotation.y+=dt*.8;crys.position.y=Math.sin(a*2)*.1;}
     const beam=c.mesh.getObjectByName('beam'); if(beam){beam.scale.x=beam.scale.z=1+Math.sin(a*4)*.15;beam.rotation.y+=dt;}
+    const ring=c.mesh.getObjectByName('ring'); if(ring)ring.rotation.y+=dt*.6;
+    const dish=c.mesh.getObjectByName('dish'); if(dish)dish.rotation.y+=dt*1.2;
+    const sail=c.mesh.getObjectByName('sail'); if(sail)sail.rotation.z=Math.sin(a*.8)*.08;
+    const beacon=c.mesh.getObjectByName('beacon'); if(beacon)beacon.rotation.y+=dt*3;
     const sh=c.mesh.getObjectByName('shield'); if(sh){sh.material.opacity=.12+Math.sin(a*3)*.06;}
     const dome=c.mesh.getObjectByName('dome'); if(dome&&c.type==='labor'){dome.position.y=1.1+Math.sin(a*2)*.06;}
     if(c.mesh.position.y<0)c.mesh.position.y=Math.min(0,c.mesh.position.y+dt*6);
@@ -673,7 +824,15 @@ function animate(){
 animate();
 setInterval(save,4000);
 addEventListener('beforeunload',save);
-addEventListener('resize',()=>{camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight);});
+function onResize(){ const w=visualViewport?.width||innerWidth, h=visualViewport?.height||innerHeight;
+  camera.aspect=w/h; camera.updateProjectionMatrix(); renderer.setSize(w,h); }
+addEventListener('resize',onResize);
+visualViewport?.addEventListener('resize',onResize);
+// Doppel-Tap-Zoom auf Android verhindern
+document.addEventListener('dblclick',e=>e.preventDefault(),{passive:false});
+let lastTouch=0;
+document.addEventListener('touchend',e=>{ const n=Date.now(); if(n-lastTouch<350 && e.target===canvas) e.preventDefault(); lastTouch=n; },{passive:false});
 renderBuildMenu(); renderResources(); renderQuests();
 setTimeout(()=>$('loading').classList.add('hidden'),600);
-setTimeout(()=>{ if(!localStorage.getItem(SAVE_KEY+'-hide-tut')&&Object.keys(savedGrid).length===0) toast('🧱 Wähle links ein Gebäude und klicke eine Kachel!'); },1500);
+setTimeout(()=>{ if(!localStorage.getItem(SAVE_KEY+'-hide-tut')&&Object.keys(savedGrid).length===0) toast(IS_MOBILE?'🧱 Tippe auf 🛠 BAUEN und wähle ein Gebäude!':'🧱 Wähle links ein Gebäude und klicke eine Kachel!'); },1500);
+if(IS_MOBILE) setTimeout(()=>openSheet('build'),2500);

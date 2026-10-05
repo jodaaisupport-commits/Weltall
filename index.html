@@ -2,7 +2,11 @@
 <html lang="de">
 <head>
 <meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+<meta name="theme-color" content="#05070f" />
+<meta name="mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
 <title>WELTALL — 3D Weltraum Tycoon Empire im Minecraft-Style</title>
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🧊</text></svg>" />
 <link rel="stylesheet" href="style.css" />
@@ -49,11 +53,21 @@
   </div>
 
   <!-- BUILD MENU -->
+  <button id="fab-build" aria-label="Baumenü öffnen">🛠<span>BAUEN</span></button>
+  <button id="fab-quest" aria-label="Missionen öffnen">🎯<span id="quest-count"></span></button>
   <aside id="buildmenu">
-    <h2>🛠 BAUEN</h2>
-    <p class="hint">Kachel anklicken → bauen.<br>Gebäude anklicken → Upgrade.</p>
+    <div id="sheet-handle"></div>
+    <div class="sheet-head">
+      <h2>🛠 BAUEN</h2>
+      <div class="sheet-tabs">
+        <button id="tab-build" class="on">🏗 Bauen</button>
+        <button id="tab-quest">🎯 Missionen</button>
+      </div>
+      <button id="sheet-close" aria-label="Schließen">✕</button>
+    </div>
+    <p class="hint" id="build-hint">Kachel antippen → bauen.<br>Gebäude antippen → Upgrade.</p>
     <div id="build-list"></div>
-    <div class="menu-foot">
+    <div class="menu-foot" id="quest-foot">
       <div id="quest-box">
         <h3>🎯 MISSIONEN</h3>
         <div id="quests"></div>
@@ -84,10 +98,11 @@
       <h1>WILLKOMMEN, COMMANDER!</h1>
       <p>Baue dein <b>Voxel-Weltraum-Imperium</b> auf einer schwebenden Plattform:</p>
       <ol>
-        <li>🖱️ <b>Ziehen</b> = Drehen &nbsp; • &nbsp; <b>Scrollen</b> = Zoomen &nbsp; • &nbsp; <b>Rechts-Ziehen</b> = Schwenken</li>
-        <li>🧱 Klicke eine <b>freie mint-grüne Kachel</b> und wähle ein Gebäude.</li>
+        <li id="tut-controls">🖱️ <b>Ziehen</b> = Drehen &nbsp; • &nbsp; <b>Scrollen</b> = Zoomen &nbsp; • &nbsp; <b>Rechts-Ziehen</b> = Schwenken</li>
+        <li>🧱 Tippe eine <b>freie Fels-Kachel</b> auf dem Asteroiden und wähle ein Gebäude.</li>
         <li>☀️ Starte mit <b>Solarpanel + Erz-Mine</b> — Energie ist alles!</li>
         <li>🚀 Starte Expeditionen mit der <b>Raketenrampe</b> für fette Beute.</li>
+        <li>🛰 Baue <b>Raumstations-Module</b>: Andockbucht & Depot boosten deine Expeditionen. Grün gibt's nur im <b>Pflanzen-Habitat</b>!</li>
       </ol>
       <button id="btn-start">🚀 IMPERIUM STARTEN</button>
       <label class="tut-check"><input type="checkbox" id="chk-tut" /> Nicht mehr zeigen</label>
